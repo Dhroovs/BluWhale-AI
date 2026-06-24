@@ -2,23 +2,55 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
-.venv/
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
 venv/
-ENV/
 env/
+ENV/
+.venv/
 
-# Databases
+# Database files
 *.db
-*.sqlite
-deneb.db
-test.db
+*.db-journal
+*.db-wal
+*.db-shm
 
-# IDEs
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE
 .vscode/
 .idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# API Keys / Secrets
+secrets.json
+config.local.py

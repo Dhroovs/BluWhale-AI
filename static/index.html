@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BluWhale AI — Chatbot Control Center</title>
+    <meta name="description" content="BluWhale AI — Your intelligent ocean-deep chatbot workspace with RAG, memory, and multi-assistant support.">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-area">
+                    <!-- BluWhale AI Logo — Proper blue whale side profile, transparent bg -->
+                    <svg class="logo-whale" viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg" fill="none">
+                        <!-- Upper tail fluke -->
+                        <path d="M42,41 C36,34 26,26 10,20 C6,18 5,23 9,25 C19,29 28,36 35,43 Z" fill="var(--logo-color)"/>
+                        <!-- Lower tail fluke -->
+                        <path d="M42,50 C36,57 26,65 10,70 C6,72 5,67 9,66 C19,63 28,57 35,49 Z" fill="var(--logo-color)"/>
+                        <!-- Main body -->
+                        <path d="M38,42 C48,25 78,14 118,13 C152,12 176,22 192,38 C198,44 199,50 196,56 C191,66 170,74 145,77 C116,80 82,78 58,68 C44,62 38,54 38,50 Z" fill="var(--logo-color)"/>
+                        <!-- Belly — lighter highlight -->
+                        <path d="M82,62 C110,72 158,69 190,52 C195,49 196,56 192,62 C185,72 165,78 138,80 C110,82 78,78 58,68 C50,64 68,58 82,62 Z" fill="#81c3d7" opacity="0.45"/>
+                        <!-- Pectoral fin -->
+                        <path d="M150,56 C160,68 162,82 155,87 C148,86 146,70 148,60 Z" fill="var(--logo-color)" opacity="0.85"/>
+                        <!-- Eye -->
+                        <circle cx="185" cy="38" r="4" fill="var(--bg-main,#0a2233)" opacity="0.85"/>
+                        <circle cx="184" cy="37" r="1.5" fill="#e8f4f8" opacity="0.7"/>
+                        <!-- Baleen / throat pleats -->
+                        <path d="M172,48 C178,56 180,64 178,70" stroke="var(--bg-main,#0a2233)" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.3"/>
+                        <path d="M165,50 C170,58 172,65 170,70" stroke="var(--bg-main,#0a2233)" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.22"/>
+                    </svg>
+                    <h1>BluWhale <span class="brand-ai">AI</span></h1>
+                </div>
+                <div class="header-actions">
+                    <button id="theme-toggle-btn" class="btn-theme-toggle" title="Toggle Light/Dark Theme">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <div class="status-indicator">
+                        <span class="pulse-dot"></span>
+                        <span class="status-text">Online</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project-based Workspace Tree -->
+            <div class="sidebar-section projects-section">
+                <div class="section-header">
+                    <h3 class="section-title"><i class="fa-solid fa-folder-tree"></i> Projects &amp; Chats</h3>
+                    <button onclick="openCreateProjectModal()" class="btn-icon-primary" title="Create New Project Workspace">
+                        <i class="fa-solid fa-folder-plus"></i>
+                    </button>
+                </div>
+                <div id="projects-tree" class="projects-tree">
+                    <!-- Dynamic loading via JS -->
+                    <div class="loading-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Loading workspaces...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Drawer & Settings Shortcuts -->
+            <div class="sidebar-footer">
+                <div class="sidebar-shortcuts">
+                    <button onclick="openAssistantMgrModal()" class="shortcut-btn">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Assistants
+                    </button>
+                    <button onclick="openMemoryMgrModal()" class="shortcut-btn">
+                        <i class="fa-solid fa-brain"></i> Memory
+                    </button>
+                </div>
+                
+                <div class="settings-drawer" id="settings-drawer">
+                    <div class="settings-drawer-content">
+                        <div class="input-group">
+                            <label for="app-api-key">App Access Token (X-API-Key)</label>
+                            <div class="password-input">
+                                <input type="password" id="app-api-key" placeholder="Enter X-API-Key..." value="deneb-secret-key">
+                                <button type="button" class="toggle-password" onclick="togglePasswordVisibility('app-api-key')">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="grok-api-key">xAI Grok API Key</label>
+                            <div class="password-input">
+                                <input type="password" id="grok-api-key" placeholder="grok-xxxxxx (Optional)...">
+                                <button type="button" class="toggle-password" onclick="togglePasswordVisibility('grok-api-key')">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                            <span class="helper-text">Key is saved in browser.</span>
+                        </div>
+                        <button id="save-keys-btn" type="button" class="btn btn-secondary btn-sm btn-block">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Keys &amp; Reload
+                        </button>
+                    </div>
+                </div>
+                <button type="button" id="toggle-settings-btn" class="btn-toggle-settings">
+                    <i class="fa-solid fa-sliders"></i> Settings &amp; API Keys
+                </button>
+            </div>
+        </aside>
+
+        <!-- Split Screen Main Content Layout -->
+        <main class="workspace-layout">
+            <!-- Left Panel: Chat Session -->
+            <section class="chat-panel">
+                <!-- Chat Header -->
+                <header id="chat-header" class="chat-header">
+                    <div class="bot-info-main">
+                        <div class="bot-avatar" id="active-ast-avatar-container">
+                            <!-- Proper blue whale side-profile -->
+                            <svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg" fill="none" style="width:20px;height:auto;">
+                                <path d="M42,41 C36,34 26,26 10,20 C6,18 5,23 9,25 C19,29 28,36 35,43 Z" fill="currentColor"/>
+                                <path d="M42,50 C36,57 26,65 10,70 C6,72 5,67 9,66 C19,63 28,57 35,49 Z" fill="currentColor"/>
+                                <path d="M38,42 C48,25 78,14 118,13 C152,12 176,22 192,38 C198,44 199,50 196,56 C191,66 170,74 145,77 C116,80 82,78 58,68 C44,62 38,54 38,50 Z" fill="currentColor"/>
+                                <path d="M82,62 C110,72 158,69 190,52 C195,49 196,56 192,62 C185,72 165,78 138,80 C110,82 78,78 58,68 C50,64 68,58 82,62 Z" fill="#81c3d7" opacity="0.45"/>
+                                <path d="M150,56 C160,68 162,82 155,87 C148,86 146,70 148,60 Z" fill="currentColor" opacity="0.85"/>
+                                <circle cx="185" cy="38" r="4" fill="var(--bg-main,#0a2233)" opacity="0.85"/>
+                            </svg>
+                        </div>
+                        <div class="bot-meta">
+                            <h2 id="active-bot-name">Select a Conversation</h2>
+                            <p id="active-bot-description">Choose a workspace thread from the project list on the left to begin.</p>
+                        </div>
+                    </div>
+                    <!-- Controls placeholder to keep compatibility with script references -->
+                    <div class="bot-controls" id="active-bot-controls" style="display:none;"></div>
+                </header>
+
+                <!-- Messages Log area -->
+                <div id="messages-container" class="messages-container">
+                    <div class="welcome-message-panel">
+                        <div class="welcome-whale-icon">
+                            <!-- Proper blue whale side-profile welcome icon -->
+                            <svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg" fill="none" class="welcome-whale-svg" style="width:80px;height:auto;filter:drop-shadow(0 0 18px rgba(58,124,165,0.55));">
+                                <path d="M42,41 C36,34 26,26 10,20 C6,18 5,23 9,25 C19,29 28,36 35,43 Z" fill="var(--logo-color)"/>
+                                <path d="M42,50 C36,57 26,65 10,70 C6,72 5,67 9,66 C19,63 28,57 35,49 Z" fill="var(--logo-color)"/>
+                                <path d="M38,42 C48,25 78,14 118,13 C152,12 176,22 192,38 C198,44 199,50 196,56 C191,66 170,74 145,77 C116,80 82,78 58,68 C44,62 38,54 38,50 Z" fill="var(--logo-color)"/>
+                                <path d="M82,62 C110,72 158,69 190,52 C195,49 196,56 192,62 C185,72 165,78 138,80 C110,82 78,78 58,68 C50,64 68,58 82,62 Z" fill="#81c3d7" opacity="0.5"/>
+                                <path d="M150,56 C160,68 162,82 155,87 C148,86 146,70 148,60 Z" fill="var(--logo-color)" opacity="0.85"/>
+                                <circle cx="185" cy="38" r="5" fill="var(--bg-main,#0a2233)" opacity="0.85"/>
+                                <circle cx="184" cy="37" r="2" fill="#e8f4f8" opacity="0.7"/>
+                                <path d="M172,48 C178,56 180,64 178,70" stroke="var(--bg-main,#0a2233)" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.3"/>
+                                <path d="M165,50 C170,58 172,65 170,70" stroke="var(--bg-main,#0a2233)" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.22"/>
+                            </svg>
+                        </div>
+                        <h2>Welcome to the BluWhale AI Workspace</h2>
+                        <p>Select a RAG conversation thread from the left or create a new one to begin chatting.</p>
+                    </div>
+                </div>
+
+                <!-- Premium Chat Console -->
+                <div class="input-container">
+                    <form id="chat-form" class="chat-console">
+                        <div class="console-input-row">
+                            <textarea id="user-input" placeholder="Select a conversation thread to begin..." rows="1" disabled></textarea>
+                        </div>
+                        <div class="console-utility-row">
+                            <div class="console-meta">
+                                <span id="console-model-badge" class="console-badge">
+                                    <i class="fa-solid fa-microchip"></i> NO CHAT ACTIVE
+                                </span>
+                                <span id="console-rag-badge" class="console-badge">
+                                    <i class="fa-solid fa-database"></i> RAG INACTIVE
+                                </span>
+                                <button type="button" id="console-mode-toggle" class="console-badge interactive" onclick="toggleChatMode()" disabled>
+                                    <i class="fa-solid fa-globe"></i> MODE: NORMAL
+                                </button>
+                            </div>
+                            <div class="console-actions">
+                                <button type="button" id="console-kb-btn" class="btn btn-secondary btn-sm console-btn" onclick="openManageKbModal()" title="Manage Knowledge Documents" disabled>
+                                    <i class="fa-solid fa-book-open"></i> KNOWLEDGE
+                                </button>
+                                <button type="submit" id="send-btn" class="btn-send-console" disabled>
+                                    <span>SEND QUERY</span> <i class="fa-solid fa-arrow-right-long"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Right Panel: Artifact Canvas Panel -->
+            <section class="canvas-panel" id="canvas-panel" style="display: none;">
+                <div class="canvas-header">
+                    <div class="canvas-title-area">
+                        <span class="canvas-badge" id="canvas-type-badge">CODE</span>
+                        <h3 id="canvas-title">Artifact Canvas Workspace</h3>
+                    </div>
+                    <div class="canvas-actions">
+                        <button type="button" onclick="copyCanvasContent()" class="canvas-action-btn" title="Copy code to clipboard">
+                            <i class="fa-solid fa-copy"></i> Copy
+                        </button>
+                        <button type="button" onclick="downloadCanvasContent()" class="canvas-action-btn" title="Download as local file">
+                            <i class="fa-solid fa-download"></i> Download
+                        </button>
+                        <button type="button" onclick="toggleCanvasExpand()" class="canvas-action-btn" id="canvas-expand-btn" title="Expand to fullscreen">
+                            <i class="fa-solid fa-expand"></i> Maximize
+                        </button>
+                        <button type="button" onclick="closeCanvas()" class="canvas-action-btn close-canvas-btn" title="Close Workspace Panel">&times;</button>
+                    </div>
+                </div>
+                <div class="canvas-body">
+                    <!-- Standard pre code box for editorial styling -->
+                    <pre><code id="canvas-code-block" class="hljs"></code></pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- PROJECT MODAL (Create/Rename) -->
+    <div id="project-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="project-modal-title">Configure Workspace Project</h2>
+                <button type="button" class="close-modal-btn" onclick="closeModal('project-modal')">&times;</button>
+            </div>
+            <form id="project-form" onsubmit="saveProject(event)">
+                <input type="hidden" id="edit-project-id">
+                <div class="form-group">
+                    <label for="project-name">Project Folder Name *</label>
+                    <input type="text" id="project-name" required placeholder="e.g. Internship Notes" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="project-description">Description</label>
+                    <input type="text" id="project-description" placeholder="Focus area of the conversations" maxlength="250">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('project-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CREATE CONVERSATION THREAD MODAL -->
+    <div id="create-conv-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Initialize Conversation Thread</h2>
+                <button type="button" class="close-modal-btn" onclick="closeModal('create-conv-modal')">&times;</button>
+            </div>
+            <form id="create-conv-form" onsubmit="saveConversation(event)">
+                <input type="hidden" id="create-conv-project-id">
+                <div class="form-group">
+                    <label for="conv-title">Conversation Title *</label>
+                    <input type="text" id="conv-title" required placeholder="e.g. Scraper Architecture" value="New Conversation" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="conv-assistant-id">Select AI Assistant *</label>
+                    <select id="conv-assistant-id" required>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="conv-chat-mode">Default Search Mode</label>
+                    <select id="conv-chat-mode">
+                        <option value="normal">Normal Conversation (Direct)</option>
+                        <option value="web_search">Web Search (Fact retrieval)</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('create-conv-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Thread</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MOVE CONVERSATION THREAD MODAL -->
+    <div id="move-conv-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Move Conversation between Projects</h2>
+                <button type="button" class="close-modal-btn" onclick="closeModal('move-conv-modal')">&times;</button>
+            </div>
+            <form id="move-conv-form" onsubmit="executeMoveConversation(event)">
+                <input type="hidden" id="move-conv-id">
+                <div class="form-group">
+                    <label for="move-conv-project-id">Select Project Folder *</label>
+                    <select id="move-conv-project-id" required>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('move-conv-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Move Conversation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ASSISTANT MANAGEMENT MODAL (List Assistants) -->
+    <div id="assistant-mgr-modal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2>Custom AI Assistants (Custom GPTs)</h2>
+                <button type="button" class="close-modal-btn" onclick="closeModal('assistant-mgr-modal')">&times;</button>
+            </div>
+            <div class="kb-modal-grid">
+                <div class="kb-form-panel">
+                    <h3>Save Custom Assistant</h3>
+                    <form id="assistant-form" onsubmit="saveAssistant(event)" style="padding:0;">
+                        <input type="hidden" id="edit-assistant-id">
+                        <div class="form-group">
+                            <label for="ast-name">Assistant Name *</label>
+                            <input type="text" id="ast-name" required placeholder="e.g. Scraping Assistant" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="ast-description">Description *</label>
+                            <input type="text" id="ast-description" required placeholder="Brief outline of its persona/specialty" maxlength="250">
+                        </div>
+                        <div class="form-group">
+                            <label for="ast-avatar">Avatar Icon (FontAwesome Class)</label>
+                            <select id="ast-avatar">
+                                <option value="fa-solid fa-wand-magic-sparkles">Magic Wand (Default)</option>
+                                <option value="fa-solid fa-server">Database/Server</option>
+                                <option value="fa-solid fa-clipboard-list">List/PM</option>
+                                <option value="fa-solid fa-code">Coding Tag</option>
+                                <option value="fa-solid fa-brain">Brain Icon</option>
+                                <option value="fa-solid fa-graduation-cap">Educator</option>
+                                <option value="fa-solid fa-fish">Fish (Ocean)</option>
+                                <option value="fa-solid fa-anchor">Anchor (Maritime)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ast-prompt">System Prompt instructions *</label>
+                            <textarea id="ast-prompt" rows="5" required placeholder="Act as a tech specialist..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Save Assistant</button>
+                    </form>
+                </div>
+                <div class="kb-list-panel">
+                    <h3>Available Assistants</h3>
+                    <div id="assistants-list" class="kb-docs-list">
+                        <!-- Dynamic list loading -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MEMORY DATABASE MANAGER MODAL -->
+    <div id="memory-mgr-modal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2>User Profile Memory Registry</h2>
+                <button type="button" class="close-modal-btn" onclick="closeModal('memory-mgr-modal')">&times;</button>
+            </div>
+            <div class="kb-modal-grid">
+                <div class="kb-form-panel">
+                    <h3>Save Memory Fact</h3>
+                    <form id="memory-form" onsubmit="saveMemory(event)" style="padding:0;">
+                        <input type="hidden" id="edit-memory-id">
+                        <div class="form-group">
+                            <label for="mem-text">User Information / Preference to Remember *</label>
+                            <textarea id="mem-text" rows="4" required placeholder="e.g. I work with PostgreSQL in production backends."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="mem-category">Memory Category *</label>
+                            <select id="mem-category" required>
+                                <option value="preferences">preferences (Stack, code style, editor)</option>
+                                <option value="professional">professional (Company, job title, background)</option>
+                                <option value="personal">personal (Name, timezone, locations)</option>
+                                <option value="custom">custom (Arbitrary details)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Save Memory Entry</button>
+                    </form>
+                </div>
+                <div class="kb-list-panel">
+                    <h3>Stored Memories</h3>
+                    <div id="memories-list" class="kb-docs-list">
+                        <!-- Dynamic memory cards loading -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KNOWLEDGE BASE MODAL (RAG management) -->
+    <div id="kb-modal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2>Knowledge Base Registry - <span id="kb-bot-title">Assistant</span></h2>
+                <button type="button" class="close-modal-btn" onclick="closeModal('kb-modal')">&times;</button>
+            </div>
+            
+            <div class="kb-modal-grid">
+                <!-- Document Ingestion Form -->
+                <div class="kb-form-panel">
+                    <h3>Ingest New Knowledge Document</h3>
+                    <div class="tab-container">
+                        <button type="button" class="tab-btn active" onclick="switchKbTab('text-tab')">Text Content</button>
+                        <button type="button" class="tab-btn" onclick="switchKbTab('file-tab')">File Upload</button>
+                        <button type="button" class="tab-btn" onclick="switchKbTab('url-tab')">Web URL</button>
+                    </div>
+
+                    <!-- TEXT TAB -->
+                    <div id="text-tab" class="tab-pane active">
+                        <form id="kb-text-form" onsubmit="addKbText(event)" style="padding:0;">
+                            <div class="form-group">
+                                <label for="kb-txt-name">Document Title *</label>
+                                <input type="text" id="kb-txt-name" required placeholder="e.g. Server Launch Protocol">
+                            </div>
+                            <div class="form-group">
+                                <label for="kb-txt-desc">Short Description</label>
+                                <input type="text" id="kb-txt-desc" placeholder="Brief outline of contents">
+                            </div>
+                            <div class="form-group">
+                                <label for="kb-txt-content">Raw Text Content *</label>
+                                <textarea id="kb-txt-content" rows="6" required placeholder="Enter the exact textual information to segment and store..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Add Document</button>
+                        </form>
+                    </div>
+
+                    <!-- FILE TAB -->
+                    <div id="file-tab" class="tab-pane">
+                        <form id="kb-file-form" onsubmit="addKbFile(event)" style="padding:0;">
+                            <div class="form-group">
+                                <label for="kb-file-name">Document Title *</label>
+                                <input type="text" id="kb-file-name" required placeholder="e.g. Operations Guidelines">
+                            </div>
+                            <div class="form-group">
+                                <label for="kb-file-desc">Short Description</label>
+                                <input type="text" id="kb-file-desc" placeholder="Brief outline of contents">
+                            </div>
+                            <div class="form-group">
+                                <label for="kb-file-input">Select Document File (.txt, .pdf, .md) *</label>
+                                <input type="file" id="kb-file-input" required accept=".txt,.pdf,.md">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Upload &amp; Ingest File</button>
+                        </form>
+                    </div>
+
+                    <!-- URL TAB -->
+                    <div id="url-tab" class="tab-pane">
+                        <form id="kb-url-form" onsubmit="addKbUrl(event)" style="padding:0;">
+                            <div class="form-group">
+                                <label for="kb-url-name">Document Title *</label>
+                                <input type="text" id="kb-url-name" required placeholder="e.g. FastAPI Documentation">
+                            </div>
+                            <div class="form-group">
+                                <label for="kb-url-desc">Short Description</label>
+                                <input type="text" id="kb-url-desc" placeholder="Brief outline of contents">
+                            </div>
+                            <div class="form-group">
+                                <label for="kb-url-input">HTTP/HTTPS Web Page URL *</label>
+                                <input type="url" id="kb-url-input" required placeholder="https://example.com/guide">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Scrape &amp; Ingest URL</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Existing Documents List -->
+                <div class="kb-list-panel">
+                    <h3>Linked Documents (<span id="kb-docs-count">0</span>)</h3>
+                    <div id="kb-docs-list" class="kb-docs-list">
+                        <!-- Dynamic Loading -->
+                        <div class="loading-state">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Fetching knowledge documents...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Controller -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

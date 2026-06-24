@@ -37,6 +37,7 @@ def setup_db():
 def db():
     # Clear tables to start with a fresh state.
     db = TestingSessionLocal()
+    db.query(models.KnowledgeBaseChunk).delete()
     db.query(models.KnowledgeBase).delete()
     db.query(models.Chatbot).delete()
     db.commit()
@@ -55,7 +56,7 @@ def client(db):
         finally:
             pass
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-API-Key": "deneb-secret-key"}) as c:
         yield c
     app.dependency_overrides.clear()
 
@@ -151,9 +152,9 @@ def test_delete_chatbot(client):
 
 def test_list_chatbots_pagination_and_search(client):
     # Seed 3 chatbots
-    client.post("/api/v1/chatbots/", json={"name": "Alpha Coder", "model": "stellar-ultra", "is_active": True})
-    client.post("/api/v1/chatbots/", json={"name": "Beta Creative", "model": "nebula-mini", "is_active": True})
-    client.post("/api/v1/chatbots/", json={"name": "Gamma Helper", "model": "deneb-light-v1", "is_active": False})
+    client.post("/api/v1/chatbots/", json={"name": "Alpha Coder", "model": "grok-2", "is_active": True})
+    client.post("/api/v1/chatbots/", json={"name": "Beta Creative", "model": "grok-2-1212", "is_active": True})
+    client.post("/api/v1/chatbots/", json={"name": "Gamma Helper", "model": "grok-beta", "is_active": False})
 
     # Test List Pagination (page=1, size=2)
     response = client.get("/api/v1/chatbots/?page=1&size=2")
@@ -229,3 +230,249 @@ def test_delete_chatbot_cascades_kb(client):
 
     # Assert KB is deleted automatically via DB cascade
     assert client.get(f"/api/v1/knowledge-bases/{kb_id}").status_code == 404
+
+
+def test_api_key_verification(db):
+    # Test client without correct API key
+    with TestClient(app) as no_key_client:
+        response = no_key_client.get("/api/v1/chatbots/")
+        assert response.status_code == 401
+        
+    with TestClient(app, headers={"X-API-Key": "wrong-key"}) as wrong_key_client:
+        response = wrong_key_client.get("/api/v1/chatbots/")
+        assert response.status_code == 401
+
+
+def test_knowledge_base_auto_chunking(client):
+    # Setup chatbot first
+    bot_id = client.post("/api/v1/chatbots/", json={"name": "Owner Bot"}).json()["id"]
+
+    # Create KB with content longer than chunk size (500)
+    long_content = (
+        "FastAPI is a modern, fast (high-performance), web framework for building APIs with Python 3.8+ based on standard Python type hints. "
+        "The key features are: "
+        "Very high performance, on par with NodeJS and Go (thanks to Starlette and Pydantic). One of the fastest Python frameworks available. "
+        "Fast to code: Increase the speed to develop features by about 200% to 300%. "
+        "Fewer bugs: Reduce about 40% of human (developer) induced errors. "
+        "Intuitive: Great editor support. Completion everywhere. Less time debugging. "
+        "Easy: Designed to be easy to use and learn. Less time reading documentation. "
+        "Short: Minimize code duplication. Multiple features from each parameter declaration. Fewer bugs. "
+        "Robust: Get production-ready code. With automatic interactive documentation. "
+        "Standards-based: Based on (and fully compatible with) the open standards for APIs: OpenAPI and JSON Schema. "
+        "It is built on top of Starlette and Pydantic, making it extremely robust and efficient. "
+        "We are adding content chunks to the database to support building vector search and RAG in future development phases."
+    )
+    kb_payload = {
+        "name": "Long Guide",
+        "description": "Guides systems with extensive detail",
+        "data_source": "text",
+        "content": long_content,
+        "chatbot_id": bot_id
+    }
+    response = client.post("/api/v1/knowledge-bases/", json=kb_payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["chunks"] is not None
+    assert len(data["chunks"]) >= 2
+    # Verify chunks are in the db by getting the KB details
+    get_resp = client.get(f"/api/v1/knowledge-bases/{data['id']}")
+    assert get_resp.status_code == 200
+    assert len(get_resp.json()["chunks"]) >= 2
+
+
+def test_file_upload_txt(client):
+    bot_id = client.post("/api/v1/chatbots/", json={"name": "File Bot"}).json()["id"]
+    
+    file_content = b"This is content uploaded from a text file. It is used to test Deneb AI text ingestion."
+    files = {"file": ("test_doc.txt", file_content, "text/plain")}
+    data = {
+        "chatbot_id": bot_id,
+        "name": "Uploaded TXT Doc",
+        "description": "From txt file upload"
+    }
+    
+    response = client.post("/api/v1/knowledge-bases/upload", files=files, data=data)
+    assert response.status_code == 201
+    res_data = response.json()
+    assert res_data["data_source"] == "file"
+    assert "text file" in res_data["content"]
+    assert len(res_data["chunks"]) == 1
+
+
+def test_file_upload_pdf(client, monkeypatch):
+    bot_id = client.post("/api/v1/chatbots/", json={"name": "PDF Bot"}).json()["id"]
+    
+    # Mock PdfReader behavior
+    class MockPage:
+        def extract_text(self):
+            return "This is text extracted from a mocked PDF document."
+            
+    class MockPdfReader:
+        def __init__(self, stream):
+            self.pages = [MockPage()]
+            
+    monkeypatch.setattr("app.utils.extractor.PdfReader", MockPdfReader)
+    
+    files = {"file": ("test_doc.pdf", b"%PDF-1.4 mock bytes", "application/pdf")}
+    data = {
+        "chatbot_id": bot_id,
+        "name": "Uploaded PDF Doc",
+        "description": "From pdf file upload"
+    }
+    
+    response = client.post("/api/v1/knowledge-bases/upload", files=files, data=data)
+    assert response.status_code == 201
+    res_data = response.json()
+    assert res_data["data_source"] == "file"
+    assert "mocked PDF" in res_data["content"]
+    assert len(res_data["chunks"]) == 1
+
+
+def test_url_scraping_and_auto_scraping(client, monkeypatch):
+    bot_id = client.post("/api/v1/chatbots/", json={"name": "Scraper Bot"}).json()["id"]
+    
+    # Mock extract_text_from_url
+    monkeypatch.setattr("app.utils.extractor.extract_text_from_url", lambda url: f"Mocked text from URL: {url}")
+    
+    # Test auto-scrape on creation
+    kb_payload = {
+        "name": "Auto Scraped",
+        "data_source": "url",
+        "content": "https://example.com/roadmap",
+        "chatbot_id": bot_id
+    }
+    response = client.post("/api/v1/knowledge-bases/", json=kb_payload)
+    assert response.status_code == 201
+    assert response.json()["content"] == "Mocked text from URL: https://example.com/roadmap"
+    
+    # Test dedicated scrape endpoint
+    scrape_payload = {
+        "url": "https://example.com/about",
+        "chatbot_id": bot_id,
+        "name": "Dedicated Scraping",
+        "description": "Scraped from web page"
+    }
+    response = client.post("/api/v1/knowledge-bases/scrape", json=scrape_payload)
+    assert response.status_code == 201
+    assert response.json()["content"] == "Mocked text from URL: https://example.com/about"
+
+
+def test_chat_simulation(client):
+    # Setup
+    bot_id = client.post("/api/v1/chatbots/", json={
+        "name": "Deneb Assistant",
+        "system_prompt": "You are the deneb AI Assistant."
+    }).json()["id"]
+    
+    client.post("/api/v1/knowledge-bases/", json={
+        "name": "FastAPI Milestones",
+        "data_source": "text",
+        "content": "FastAPI milestone 1 covers route setups, pagination, and database validation.",
+        "chatbot_id": bot_id
+    })
+    
+    # Simulate chat query
+    # With matching token
+    response = client.post(f"/api/v1/chatbots/{bot_id}/simulate?query=FastAPI%20milestone&top_k=1")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["chatbot_name"] == "Deneb Assistant"
+    assert len(data["retrieved_context"]) == 1
+    assert "FastAPI milestone 1" in data["retrieved_context"][0]["content"]
+    assert "final_constructed_prompt" in data
+    assert "simulated_response" in data
+    
+    # Simulate chat query with no match
+    response = client.post(f"/api/v1/chatbots/{bot_id}/simulate?query=unrelated&top_k=1")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["retrieved_context"]) == 0
+    assert "No relevant knowledge" in data["final_constructed_prompt"]
+
+
+def test_chat_with_grok_fallback(client):
+    # Setup chatbot first
+    bot_id = client.post("/api/v1/chatbots/", json={
+        "name": "Fallback Bot",
+        "model": "grok-beta",
+        "system_prompt": "Helpful chatbot."
+    }).json()["id"]
+
+    # Call /chat without Grok key (will fall back to mock response)
+    payload = {
+        "messages": [
+            {"role": "user", "content": "What is the secret?"}
+        ],
+        "top_k": 2
+    }
+    response = client.post(f"/api/v1/chatbots/{bot_id}/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["chatbot_name"] == "Fallback Bot"
+    assert data["is_mock"] is True
+    assert "Simulated response" in data["response"]
+    assert len(data["retrieved_context"]) == 0
+
+
+def test_chat_with_grok_mocked(client, monkeypatch):
+    bot_id = client.post("/api/v1/chatbots/", json={
+        "name": "Grok Bot",
+        "model": "grok-2",
+        "system_prompt": "Grok helper."
+    }).json()["id"]
+
+    client.post("/api/v1/knowledge-bases/", json={
+        "name": "Project Deneb Codebase",
+        "data_source": "text",
+        "content": "Phase 2 contains the chat control center interface and Grok API integration.",
+        "chatbot_id": bot_id
+    })
+
+    # Mock the httpx post call to simulate Grok response
+    class MockResponse:
+        def __init__(self, json_data, status_code=200):
+            self.json_data = json_data
+            self.status_code = status_code
+            self.text = "Error detail string"
+
+        def json(self):
+            return self.json_data
+
+    def mock_post(url, headers, json, timeout):
+        # Verify headers
+        assert headers["Authorization"] == "Bearer test-grok-key"
+        # Verify system prompt has context injected
+        system_msg = json["messages"][0]
+        assert system_msg["role"] == "system"
+        assert "Phase 2 contains the chat control center" in system_msg["content"]
+        
+        # Return mocked completion
+        return MockResponse({
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Successfully matched context for Phase 2."
+                    }
+                }
+            ]
+        })
+
+    monkeypatch.setattr("httpx.post", mock_post)
+
+    payload = {
+        "messages": [
+            {"role": "user", "content": "What is in Phase 2?"}
+        ],
+        "top_k": 1
+    }
+    # Pass Grok key via custom header
+    headers = {"X-Grok-API-Key": "test-grok-key"}
+    response = client.post(f"/api/v1/chatbots/{bot_id}/chat", json=payload, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["is_mock"] is False
+    assert data["response"] == "Successfully matched context for Phase 2."
+    assert len(data["retrieved_context"]) == 1
+    assert data["retrieved_context"][0]["knowledge_base_name"] == "Project Deneb Codebase"
+

@@ -1,13 +1,16 @@
 import math
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status, Header
 from sqlalchemy.orm import Session
 
 from app import services, schemas, database
 
+from app.utils.security import verify_api_key
+
 router = APIRouter(
     prefix="/chatbots",
-    tags=["Chatbots"]
+    tags=["Chatbots"],
+    dependencies=[Depends(verify_api_key)]
 )
 
 
@@ -110,3 +113,50 @@ def delete_chatbot_record(chatbot_id: int, db: Session = Depends(database.get_db
         )
     services.delete_chatbot(db=db, db_chatbot=db_chatbot)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{chatbot_id}/simulate")
+def simulate_chatbot_prompt(
+    chatbot_id: int,
+    query: str = Query(..., min_length=1, description="The user prompt to simulate"),
+    top_k: int = Query(2, ge=1, le=10, description="Number of context chunks to retrieve"),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Simulate a prompt and RAG context retrieval for the chatbot.
+    """
+    result = services.simulate_chat_response(db=db, chatbot_id=chatbot_id, query=query, top_k=top_k)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Chatbot with ID {chatbot_id} not found"
+        )
+    return result
+
+
+@router.post("/{chatbot_id}/chat")
+def chat_with_chatbot_endpoint(
+    chatbot_id: int,
+    payload: schemas.ChatRequest,
+    x_grok_api_key: Optional[str] = Header(None, alias="X-Grok-API-Key"),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Execute chat completions with Grok API and knowledge-base context.
+    Optionally, supply a Grok API key via the 'X-Grok-API-Key' header.
+    """
+    messages_list = [{"role": msg.role, "content": msg.content} for msg in payload.messages]
+    
+    result = services.chat_with_chatbot(
+        db=db,
+        chatbot_id=chatbot_id,
+        messages=messages_list,
+        top_k=payload.top_k,
+        override_grok_key=x_grok_api_key
+    )
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Chatbot with ID {chatbot_id} not found"
+        )
+    return result

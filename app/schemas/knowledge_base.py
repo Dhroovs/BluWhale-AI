@@ -9,7 +9,8 @@ class KnowledgeBaseBase(BaseModel):
     description: Optional[str] = Field(None, max_length=250, description="Brief description of the content")
     data_source: str = Field("text", description="Source type (text, file, url, database)")
     content: str = Field(..., min_length=1, description="The knowledge content text")
-    chatbot_id: int = Field(..., description="The ID of the chatbot linked to this knowledge")
+    chatbot_id: Optional[int] = Field(None, description="The ID of the chatbot linked to this knowledge")
+    assistant_id: Optional[int] = Field(None, description="The ID of the assistant linked to this knowledge")
 
     @field_validator("data_source")
     @classmethod
@@ -29,6 +30,7 @@ class KnowledgeBaseUpdate(BaseModel):
     data_source: Optional[str] = Field(None)
     content: Optional[str] = Field(None)
     chatbot_id: Optional[int] = Field(None)
+    assistant_id: Optional[int] = Field(None)
 
     @field_validator("data_source")
     @classmethod
@@ -38,9 +40,20 @@ class KnowledgeBaseUpdate(BaseModel):
         return value
 
 
+class KnowledgeBaseChunkResponse(BaseModel):
+    id: int
+    knowledge_base_id: int
+    chunk_index: int
+    content: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class KnowledgeBaseResponse(KnowledgeBaseBase):
     id: int
     created_at: datetime
+    chunks: Optional[List[KnowledgeBaseChunkResponse]] = Field(default=None)
 
     model_config = ConfigDict(from_attributes=True)
 

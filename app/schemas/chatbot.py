@@ -3,7 +3,10 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 # List of allowed LLM models in our platform.
-ALLOWED_MODELS = ["deneb-core-v1", "deneb-light-v1", "stellar-ultra", "nebula-mini"]
+ALLOWED_MODELS = [
+    "deneb-core-v1", "deneb-light-v1",
+    "grok-2", "grok-2-1212", "grok-beta"
+]
 
 class ChatbotBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=50, description="The chatbot agent name")
@@ -69,3 +72,14 @@ class PaginatedChatbotResponse(BaseModel):
     size: int = Field(..., description="Number of items per page")
     total_pages: int = Field(..., description="Total pages available")
     items: List[ChatbotResponse] = Field(..., description="List of chatbots for the current page")
+
+
+class MessageParam(BaseModel):
+    role: str = Field(..., description="The role of the message author (system, user, assistant)")
+    content: str = Field(..., min_length=1, description="The content of the message")
+
+
+class ChatRequest(BaseModel):
+    messages: List[MessageParam] = Field(..., description="The conversation history list")
+    top_k: int = Field(2, ge=1, le=10, description="Number of context chunks to retrieve")
+

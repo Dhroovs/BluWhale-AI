@@ -1,10 +1,11 @@
 import uvicorn
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.database import engine, Base
-from app.routes import chatbot_router, kb_router
+from app.routes import chatbot_router, kb_router, assistant_router, memory_router, project_router
 from app.config import settings
 
 # Automatically create the SQLite database tables on application start
@@ -36,6 +37,23 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Register API routes with proper prefixing
 app.include_router(chatbot_router, prefix="/api/v1")
 app.include_router(kb_router, prefix="/api/v1")
+app.include_router(assistant_router, prefix="/api/v1")
+app.include_router(memory_router, prefix="/api/v1")
+app.include_router(project_router, prefix="/api/v1")
+
+# Mount the static directory to serve assets (CSS, JS)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/chat", response_class=HTMLResponse, tags=["UI"])
+async def get_chat_interface():
+    """
+    Renders and serves the chatbot control center web screen.
+    """
+    import os
+    html_file = os.path.join("static", "index.html")
+    if not os.path.exists(html_file):
+        return HTMLResponse(content="<h3>Interface files not found. Ensure static/index.html is created.</h3>", status_code=404)
+    return FileResponse(html_file)
 
 # Clean API metadata landing response
 @app.get("/", tags=["System"])

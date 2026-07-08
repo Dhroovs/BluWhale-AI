@@ -77,7 +77,7 @@ Connect it to **xAI Grok** for real LLM responses, or run in **offline simulatio
 - **Conversation Threads** — Each thread links to a specific assistant with its own message history
 - **3 Chat Modes** — Switch per-conversation: `Normal` / `RAG` / `Web Search`
 - **Cascade Delete** — Deleting a project cascades to all conversations, messages, and artifacts
-- **Full Message History** — All messages persisted in SQLite with chronological retrieval
+- **Full Message History** — All messages persisted in SQLite with chronological retrieval.
 
 </td>
 </tr>

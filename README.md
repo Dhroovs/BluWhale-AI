@@ -86,7 +86,7 @@ Connect it to **xAI Grok** for real LLM responses, or run in **offline simulatio
 
 ### 📚 Knowledge Base Ingestion
 - 📄 **PDF Upload** — parsed with PyPDF, text extracted page-by-page.
-- 📝 **TXT / Markdown** — direct file uploads
+- 📝 **TXT / Markdown** — direct file uploads.
 - 🌐 **URL Scraping** — paste any public URL, content auto-scraped + cleaned
 - ✏️ **Raw Text Paste** — direct text input
 - ⚙️ **Auto-Chunking** — 500-char recursive splitter, 50-char overlap

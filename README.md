@@ -98,7 +98,7 @@ Connect it to **xAI Grok** for real LLM responses, or run in **offline simulatio
 - **Deep Blue Waters** design system — ocean-inspired dark/light themes
 - **Animated BluWhale SVG** — swimming whale logo identity.
 - **Glassmorphism** — frosted glass cards, panels, and modals
-- **Pulsing send button** — animated ocean glow effect
+- **Pulsing send button** — animated ocean glow effect.
 - **Textarea auto-grow** — expands as you type (up to 180px)
 - **4-type toast system** — success / error / warning / info
 

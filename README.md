@@ -184,7 +184,7 @@ Connect it to **xAI Grok** for real LLM responses, or run in **offline simulatio
 
 ## 📸 Screenshots
 
-> Dark and Light mode — both fully supported. Switch with one click, preference saved across sessions.
+> Dark and Light mode — both fully supported. Switch with one click, preference saved across sessions..
 
 <br>
 

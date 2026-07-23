@@ -412,7 +412,7 @@ DELETE /api/v1/memories/{id}   Delete memory
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Running Tests.
 
 ```bash
 python -m pytest test_api.py test_advanced_features.py -v

@@ -327,7 +327,7 @@ Enter both in the **Settings & API Keys** drawer inside the app. Get a Grok key 
 
 ---
 
-## 🔌 API Reference
+## 🔌 API Reference.
 
 All endpoints require the `X-API-Key` header. All routes are prefixed with `/api/v1/`.
 

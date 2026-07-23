@@ -293,7 +293,7 @@ python main.py
 
 > 🚀 Server starts at **`http://127.0.0.1:8000`**
 
-### 6️⃣ Open the App
+### 6️⃣ Open the App.
 
 ```
 http://127.0.0.1:8000/chat

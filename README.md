@@ -496,7 +496,7 @@ BluWhale-AI/
 └── 📁 docs/screenshots/           # 7 UI screenshots (dark + light)
 ```
 
-### ⭐ The Chat Pipeline
+### ⭐ The Chat Pipeline.
 
 Every message you send goes through an **11-step pipeline** (`app/services/chat.py`):
 

@@ -547,7 +547,7 @@ async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")):
         raise HTTPException(status_code=403, detail="Invalid API key")
 ```
 
-Override defaults with environment variables:
+Override defaults with environment variables::
 
 ```bash
 export API_KEY=your-custom-key
